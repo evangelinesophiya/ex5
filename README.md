@@ -35,131 +35,115 @@ Publish the website in the given URL.
 ~~~
 math.html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Area of a Rectangle</title>
+    <title>Lamp Filament Power Calculator</title>
     <style>
         body {
-            background: red;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .container {
-            background: blue;
-            border: 3px dashed yellow;
-            color: #fff;
-            padding: 30px 40px;
             font-family: Arial, sans-serif;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            background: #f9f9f9;
             text-align: center;
-            width: 350px;
+            padding: 50px;
         }
-        h2 {
-            color: #00ffff;
-            margin-bottom: 20px;
-            font-size: 2em;
-        }
-        label {
-            display: inline-block;
-            width: 80px;
-            text-align: left;
-        }
-        input[type="number"], input[type="text"] {
-            width: 120px;
-            padding: 5px;
-            border: none;
-            border-radius: 3px;
-            margin-bottom: 10px;
-        }
-        input[type="button"] {
-            margin-top: 10px;
-            padding: 7px 18px;
+        form {
             background: #fff;
-            color: blue;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        input {
+            margin: 8px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 200px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
             border: none;
-            border-radius: 3px;
+            border-radius: 5px;
             cursor: pointer;
         }
-        .row {
-            margin-bottom: 12px;
+        .result, .error {
+            margin-top: 20px;
+            font-size: 18px;
         }
+        .error { color: red; }
     </style>
-    <script>
-        function calculateArea() {
-            var length = parseFloat(document.getElementById('length').value);
-            var breadth = parseFloat(document.getElementById('breadth').value);
-            if (!isNaN(length) && !isNaN(breadth)) {
-                document.getElementById('area').value = length * breadth;
-            } else {
-                document.getElementById('area').value = '';
-            }
-        }
-    </script>
 </head>
 <body>
-    <div class="container">
-        <h2>Area of a Rectangle</h2>
-        <div class="row">
-            <label for="length">Length</label>
-            <input type="number" id="length" placeholder="Enter length"> m
-        </div>
-        <div class="row">
-            <label for="breadth">Breadth</label>
-            <input type="number" id="breadth" placeholder="Enter breadth"> m
-        </div>
-        <div class="row">
-            <input type="button" value="Calculate" onclick="calculateArea()">
-        </div>
-        <div class="row">
-            <label for="area">Area</label>
-            <input type="text" id="area" readonly> m²
-        </div>
-    </div>
+    <h2>Lamp Filament Calculator</h2>
+    <p>Formula: <b>P = I² × R</b></p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <input type="text" name="P" placeholder="Power (P) in W"><br>
+        <input type="text" name="I" placeholder="Current (I) in A"><br>
+        <input type="text" name="R" placeholder="Resistance (R) in Ω"><br>
+        <button type="submit">Calculate</button>
+    </form>
+
+    {% if result %}
+        <div class="result">{{ result }}</div>
+    {% endif %}
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
 </body>
 </html>
 
 views.py
 from django.shortcuts import render
 
-def rectarea(request):
-    context = {}
-    context['area'] = "Area"
-    context['l'] = ""
-    context['b'] = ""
-    if request.method == 'POST':
-        print("POST method is used")
-        l = request.POST.get('length','0')
-        b = request.POST.get('breadth','0')
-        print(f"request:{request}")
-        print(f"length:{l}")
-        print(f"breadth:{b}")
-        area = int(l) * int(b)
-        context['area'] = area
-        context['l'] = l
-        context['b'] = b
-        print(f"area:{area}")
-    return render(request,'mathapp/math.html',context)
+def index(request):
+    result = None
+    error = None
+
+    if request.method == "POST":
+        P = request.POST.get("P")
+        I = request.POST.get("I")
+        R = request.POST.get("R")
+
+        try:
+            P = float(P) if P else None
+            I = float(I) if I else None
+            R = float(R) if R else None
+
+            if I is not None and R is not None and P is None:
+                result = f"Power (P) = {I**2 * R:.2f} W"
+            elif P is not None and R is not None and I is None:
+                I_calc = (P / R) ** 0.5
+                result = f"Current (I) = {I_calc:.2f} A"
+            elif P is not None and I is not None and R is None:
+                R_calc = P / (I**2)
+                result = f"Resistance (R) = {R_calc:.2f} Ω"
+            else:
+                error = "Please provide exactly two values."
+        except ValueError:
+            error = "Invalid input. Please enter numbers only."
+
+    return render(request, "mathapp/math.html", {"result": result, "error": error})
+
 urls.py
 from django.contrib import admin
 from django.urls import path
-from mathapp import views
+from mathapp.views import index  # Import the view directly
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.rectangle_area, name='areaofrectangle'),
-    path('areaofrectangle/', views.rectangle_area, name='areaofrectangle'),
+    path('', index, name='index'),  # Directly map root URL to the view
 ]
+
 ~~~
 ## SERVER SIDE PROCESSING:
-![alt text](<server/Screenshot 2025-10-02 152155.png>)
+![alt text](<Screenshot (73).png>)
 
 ## HOMEPAGE:
-
-![alt text](<server/Screenshot 2025-10-02 151940.png>)
+![alt text](<Screenshot (72).png>)
 
 
 ## RESULT:
